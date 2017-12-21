@@ -22,7 +22,7 @@ appears to be stationary.*
 The system uses an ET MINI DC Motor (The object being measured) and 4 LEDs. 
 
 [*Motor Connections: Figure1*](#figure1-et-mini-dc-motor-connections)
-[*LED Connections: Figure2*](#led-connections)
+[*LED Connections: Figure2*](#figure2-led-connections)
 
 The system is controlled using an Atmega324A microncontorller. The input to the MCU is
 done using 8 pushbuttons and a 74HC148 8-Line to 3-Line Priority Encoder.
@@ -31,7 +31,7 @@ its built in 16-bit timer counter to control the flash frequency of the LEDs.
 The frequency of the motor was controlled by a Function Generator supplying a 1Khz
 frequency pulse wave.
 
-[*Final System Schematic: Figure3*](#final-system-schematic)
+[*Final System Schematic: Figure3*](#figure3-final-system-schematic)
 
 ## Schematics
 
