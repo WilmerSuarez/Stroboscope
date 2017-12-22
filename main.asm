@@ -2,11 +2,9 @@
 ;*
 ;* Title: Stroboscope
 ;* Author: Wilmer Suarez	
-;* Version: 1.1
+;* Version: 1.0
 ;* Last updated: 12/21/2017
 ;* Target: ATmega324A
-;*
-;* DESCRIPTION
 ;* 
 ;***************************************************************************
 
@@ -112,22 +110,15 @@ main_loop:
 ;* 
 ;* "pushbutton_isr" - title
 ;*
-;* Description:
+;* Description: Interrupt Service rouine triggered when any button is 
+;* pressed.
+;* Subroutine checks which button was pressed and then executes the 
+;* corresponding buttons function. 
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a
 ;*
 ;***************************************************************************
 pushbutton_isr:
@@ -311,22 +302,14 @@ done:
 ;* 
 ;* "pulse_isr" - title
 ;*
-;* Description:
+;* Description: Interrrupt Service Routine triggered when the timer/counter 1
+;* compare match A occurs.  
+;* The subroutine sends a pulse at Pin 2, Port D for 1ms. 
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a
 ;*
 ;***************************************************************************
 pulse_isr: 
@@ -353,22 +336,13 @@ pulse_isr:
 ;* 
 ;* "freq_minus_1" - title
 ;*
-;* Description:
+;* Description: Subroutine called when button 1 is pressed. The subroutine
+;* decreases the frequency by 1. 
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a
 ;*
 ;***************************************************************************
 freq_minus_1:
@@ -406,22 +380,13 @@ freq_minus_1:
 ;* 
 ;* "freq_plus_1" - title
 ;*
-;* Description:
+;* Description: Subroutine called when button 0 is pressed. The subroutine
+;* increases the frequency by 1.
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a
 ;*
 ;***************************************************************************
 freq_plus_1:
@@ -459,22 +424,13 @@ freq_plus_1:
 ;* 
 ;* "freq_ocr1a_ldval" - title
 ;*
-;* Description:
+;* Description: This subroutine calculates the OCR1A from the value of
+;* the frequency. OCR1A = C(125000)/FREQUENCY.
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a 
 ;*
 ;***************************************************************************
 freq_ocr1a_ldval:
@@ -533,22 +489,13 @@ freq_ocr1a_ldval:
 ;* 
 ;* "rpm" - title
 ;*
-;* Description:
+;* Description: This subrtouine calculates the RPM from the frequency. 
+;* RPM = FREQUENCY * 60
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a 
 ;*
 ;***************************************************************************
  x_60_rpm:
@@ -591,22 +538,13 @@ freq_ocr1a_ldval:
 ;* 
 ;* "dsp_update_freq" - title
 ;*
-;* Description:
+;* Description: This subroutine displays the value of the current frequency
+;* on the LCD.
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a 
 ;*
 ;***************************************************************************
  dsp_update_freq:
@@ -680,22 +618,13 @@ freq_ocr1a_ldval:
 ;* 
 ;* "dsp_update_rpm" - title
 ;*
-;* Description:
+;* Description: This subroutine displays the current value of the rpm on the
+;* LCD.
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
-;*
-;* Notes: 
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a 
 ;*
 ;***************************************************************************
  dsp_update_rpm:
@@ -1036,20 +965,13 @@ store_bytes:
 ;* 
 ;* "var_delay" - title
 ;*
-;* Description:
+;* Description: This subroutine allows for a delay to occur depending on the 
+;* current value of register 16. 
 ;*
-;* Author:
-;* Version:
-;* Last updated:
-;* Target:
-;* Number of words:
-;* Number of cycles:
-;* Low registers modified:
-;* High registers modified:
-;*
-;* Parameters:
-;*
-;* Returns:
+;* Author: Wilmer Suarez
+;* Version: 1.0
+;* Last updated: 12/22/2017
+;* Target: ATmega324a 
 ;*
 ;* Notes: // Delay for ATmega324a @ 1MHz = r16 * 0.1ms
 ;*
