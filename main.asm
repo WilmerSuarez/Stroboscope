@@ -1,18 +1,13 @@
 ;***************************************************************************
 ;*
-;* Title:
-;* Author:
-;* Version:
-;* Last updated:
-;* Target: 
+;* Title: Stroboscope
+;* Author: Wilmer Suarez	
+;* Version: 1.1
+;* Last updated: 12/21/2017
+;* Target: ATmega324A
 ;*
 ;* DESCRIPTION
 ;* 
-;* 
-;*
-;*
-;* VERSION HISTORY
-;* 1.0 Original version
 ;***************************************************************************
 
 //========================================= GLOBAL_VARIABLES =========================================//
@@ -42,6 +37,7 @@ reset:
 start:
 	//----- INITIALIZE_LCD_DISPLAY_USING_SPI -----//
 	call init_lcd_dog	// Initialize LCD Display
+	call clr_dsp_buffs	// Clear all dsp_buff_1-3
 
 	//--------------------- PORT_SET_UP ---------------------//
 	ldi r16, $FF		// Make PORTB and output	
@@ -95,6 +91,8 @@ start:
 	ldi  ZH, high(rpm_display<<1)  // Point to beginning of rpm_display line
 	ldi  ZL, low(rpm_display<<1)   
 	rcall load_msg	// Load message into dsp_buff_2 (LCD line 2)
+
+	call update_lcd_dog	// Display current contents of dsp_buff_1-3 on LCD  	
 	
 	//----- FREQUENCY_&_RPM_STRING_TABLE -----//
 	frequency_display: .db 1, "FREQ: 01000", 0  ; message for line #1.
@@ -107,7 +105,6 @@ start:
 //=========================================== MAIN_LOOP ===========================================//
 main_loop:
 	nop
-	call dsp_update_freq
 	rjmp main_loop
 
 //============================================= ISRs =============================================//
@@ -141,18 +138,166 @@ pushbutton_isr:
 	push r17
 	push r18
 	push r19
-	push r24
-	push r25
 
 delay_1:
 	ldi r16, 255
-	call var_delay
+	call var_delay	// Delay for some time (to ensure button press)
+key_press:
+	sbis PIND, 2	// Skip if PD2 is set (button pressed)
+	rjmp done		// If button is not pressed, return
 
+//--------------------- INPUT DATA ---------------------//
+	in r16, PINA	
+	swap r16		// Take bits 4-7 (/A0, /A1, /A2)
+	com r16			// Complement bits 
+	andi r16, $07	// Mask 4th bit in lower nibble (Only want bits 0-2)
 
+/------------------- CHECK_BUTTONS -------------------//
+	cpi r16, $07	// If button 7 was pressed, half OCR1A
+	breq half
+	cpi r16, $06	// If button 6 was pressed, double OCR1A
+	breq double
+	cpi r16, $05	// If button 5 was pressed, add 50 to OCR1A
+	breq add_50
+	cpi r16, $04	// If button 4 was pressed, subtract 50 from OCR1A
+	breq sub50
+	cpi r16, $03	// If button 3 was pressed, add 10 to OCR1A
+	breq add10
+	cpi r16, $02	// If button 2 was pressed, subtract 10 from OCR1A
+	breq sub10
+	cpi r16, $00	// If button 0 was pressed, decrement frequency by 1
+	breq freq_plus
+	cpi r16, $01	// If button 1 was pressed, increment frequency by 1
+	breq freq_minus
 
+	rjmp continue
+
+//--------------------- HALF_OCR1A ---------------------//
+is_zero_half:
+	cpi r16, $01
+	breq half_done
+	rjmp continue_half
+half:
+	lds r16, OCR1AL	// Read value of OCR1A
+	lds r17, OCR1AH
+	cpi r17, $00		// If high register is less than one
+	breq is_zero_half	// check low register
+continue_half:
+	ldi r19, $00	// Load $0002 
+	ldi r18, $02
+	call div16u		// Divide OCR1A by 2 
+	sts OCR1AH, r17	// Store value of OCR1A halved
+	sts OCR1AL, r16
+half_done:
+	rjmp done		
+
+//-------------------- DOUBLE_OCR1A --------------------//
+double:
+	lds r16, OCR1AL		// Read value of OCR1A
+	lds r17, OCR1AH
+	sbrc r17, 7
+	rjmp double_done	
+	ldi r19, $00		// Load $0002 
+	ldi r18, $02
+	call mpy16u			// Multiply OCR1A by 2 
+	sts OCR1AH, r19		// Store value of OCR1A doubled
+	sts OCR1AL, r18
+check_press_6:
+	ldi r16, 255
+	call var_delay		// Delay
+	sbic PORTD, 2		// If button still pressed, call sub_50 again
+	rjmp double
+double_done:
+	rjmp done
+
+//-------------------- ADD_50_TO_OCR1A --------------------//
+add_50:
+	lds r24, OCR1AL		// Read value of OCR1A
+	lds r25, OCR1AH
+	sbrc r25, 7		
+	rjmp add_50_done
+	adiw r25:r24, 50
+	sts OCR1AH, r25		// Store value of OCR1A + 50
+	sts OCR1AL, r24
+check_press_5:
+	ldi r16, 255
+	call var_delay		// Delay
+	sbic PORTD, 2		// If button still pressed, call sub_50 again
+	rjmp add_50
+add_50_done:
+	rjmp done
+
+//-------------------- SUB_50_TO_OCR1A --------------------//
+is_one_sub_50:
+	cpi r16, $32
+	breq sub_50_done
+	rjmp continue_sub_50
+sub_50:
+	lds r24, OCR1AL		// Read value of OCR1A
+	lds r25, OCR1AH
+	cpi r17, $01		// If high register is less than one
+	brlo is_one_sub_50	// check low register
+continue_sub_50:
+	sbiw r25:r24, 50
+	sts OCR1AH, r25		// Store value of OCR1A - 50
+	sts OCR1AL, r24
+check_press_4:
+	ldi r16, 255
+	call var_delay		// Delay
+	sbic PORTD, 2		// If button still pressed, call sub_50 again
+	rjmp sub_50
+sub_50_done:
+	rjmp done
+
+//-------------------- ADD_10_TO_OCR1A --------------------//
+add_10:
+	lds r24, OCR1AL		// Read value of OCR1A
+	lds r25, OCR1AH
+	sbrc r25, 7		
+	rjmp add_10_done
+	adiw r25:r24, 10
+	sts OCR1AH, r25		// Store value of OCR1A + 10
+	sts OCR1AL, r24
+check_press_3:
+	ldi r16, 255
+	call var_delay		// Delay
+	sbic PORTD, 2		// If button still pressed, call sub_50 again
+	rjmp add_10
+add_10_done:
+	rjmp done
+
+//-------------------- SUB_10_TO_OCR1A --------------------//
+sub_10:
+	lds r24, OCR1AL		// Read value of OCR1A
+	lds r25, OCR1AH
+	sbiw r25:r24, 10
+	sts OCR1AH, r25		// Store value of OCR1A - 10
+	sts OCR1AL, r24
+check_press_2:
+	ldi r16, 255
+	call var_delay		// Delay
+	sbic PORTD, 2		// If button still pressed, call sub_50 again
+	rjmp sub_10
+
+freq_minus:
+	call freq_minus_1
+	rjmp continue
+freq_plus:
+	call freq_plus_1
+	rjmp continue
+
+continue:
+	sei				// Enable global interrupt to allow pulse to continue updating
+	
+	call update_lcd_dog	// Display current contents of dsp_buff_1-3 on LCD
+
+	ldi r16, 255
+	call var_delay	// Delay for some time (to ensure button press)
+
+	rjmp delay_1	// Check if button is still pressed
+
+done:
 	//----- RESTORE_SREG_AND_USED_REGISTERS -----//
-	pop r25
-	pop r24
 	pop r19
 	pop r18
 	pop r17
@@ -204,6 +349,112 @@ pulse_isr:
 	reti
 
 //========================================== SUBROUTINES ==========================================//
+;***************************************************************************
+;* 
+;* "freq_minus_1" - title
+;*
+;* Description:
+;*
+;* Author:
+;* Version:
+;* Last updated:
+;* Target:
+;* Number of words:
+;* Number of cycles:
+;* Low registers modified:
+;* High registers modified:
+;*
+;* Parameters:
+;*
+;* Returns:
+;*
+;* Notes: 
+;*
+;***************************************************************************
+freq_minus_1:
+	//----- STORE_SREG_AND_USED_REGISTERS -----//
+	push r16
+	in r16, SREG
+	push r16
+	push r24
+	push r25
+
+	lds r24, freq_L		// Load frequency value
+	lds r25, freq_H
+
+	sbiw r25:r24, 1		// Subtract one from the frequency 
+
+	sts freq_L, r24		// Store updated frequency value
+	sts freq_H, r25
+
+	call freq_ocr1a_ldval	// Update OCR1A
+	call x_60_rpm			// Update RPM
+
+	call dsp_update_freq	// Display updated frequency on LCD
+	call dsp_update_rpm		// Display updated RPM on LCD
+
+	//----- RESTORE_SREG_AND_USED_REGISTERS -----//
+	pop r25
+	pop r24
+	pop r16
+	out SREG, r16
+	pop r16
+
+	ret
+
+;***************************************************************************
+;* 
+;* "freq_plus_1" - title
+;*
+;* Description:
+;*
+;* Author:
+;* Version:
+;* Last updated:
+;* Target:
+;* Number of words:
+;* Number of cycles:
+;* Low registers modified:
+;* High registers modified:
+;*
+;* Parameters:
+;*
+;* Returns:
+;*
+;* Notes: 
+;*
+;***************************************************************************
+freq_plus_1:
+	//----- STORE_SREG_AND_USED_REGISTERS -----//
+	push r16
+	in r16, SREG
+	push r16
+	push r24
+	push r25
+
+	lds r24, freq_L		// Load frequency value
+	lds r25, freq_H
+
+	adiw r25:r24, 1		// Add one to the frequency 
+
+	sts freq_L, r24		// Store updated frequency value
+	sts freq_H, r25
+
+	call freq_ocr1a_ldval	// Update OCR1A
+	call x_60_rpm			// Update RPM
+
+	call dsp_update_freq	// Display updated frequency on LCD
+	call dsp_update_rpm		// Display updated RPM on LCD
+
+	//----- RESTORE_SREG_AND_USED_REGISTERS -----//
+	pop r25
+	pop r24
+	pop r16
+	out SREG, r16
+	pop r16
+
+	ret
+
 ;***************************************************************************
 ;* 
 ;* "freq_ocr1a_ldval" - title
@@ -404,10 +655,10 @@ freq_ocr1a_ldval:
 	ori r20, $30		// Convert 5th digit to ASCII
 
 	sts dsp_buff_1 + 10, r16	// Display Digit 1
-	sts dsp_buff_1 + 9, r17 // Display Digit 2
-	sts dsp_buff_1 + 8, r18	// Display Digit 3
-	sts dsp_buff_1 + 7, r19 // Display Digit 4
-	sts dsp_buff_1 + 6, r20	// Display Digit 5
+	sts dsp_buff_1 + 9, r17		// Display Digit 2
+	sts dsp_buff_1 + 8, r18		// Display Digit 3
+	sts dsp_buff_1 + 7, r19		// Display Digit 4
+	sts dsp_buff_1 + 6, r20		// Display Digit 5
 
 	call update_lcd_dog	// Display current contents of dsp_buff_1-3 on LCD 
 
@@ -492,11 +743,11 @@ freq_ocr1a_ldval:
 	andi r20, $0F		// Mask high byte of r20 to acquire 5th digit 
 	ori r20, $30		// Convert 5th digit to ASCII
 
-	sts dsp_buff_2 + 9, r16	// Display Digit 1
-	sts dsp_buff_2 + 8, r17 // Display Digit 2
-	sts dsp_buff_2 + 7, r18	// Display Digit 3
-	sts dsp_buff_2 + 6, r19 // Display Digit 4
-	sts dsp_buff_2 + 5, r20	// Display Digit 5
+	sts dsp_buff_2 + 9, r16		// Display Digit 1
+	sts dsp_buff_2 + 8, r17		// Display Digit 2
+	sts dsp_buff_2 + 7, r18		// Display Digit 3
+	sts dsp_buff_2 + 6, r19		// Display Digit 4
+	sts dsp_buff_2 + 5, r20		// Display Digit 5
 	
 	call update_lcd_dog	// Display current contents of dsp_buff_1-3 on LCD 
 
@@ -757,6 +1008,30 @@ noad8:	ror	m16u3		;shift right result byte 3
 	brne	m16u_1		;if not done, loop more
 	ret
 
+;************************
+;NAME:      clr_dsp_buffs
+;FUNCTION:  Initializes dsp_buffers 1, 2, and 3 with blanks (0x20)
+;ASSUMES:   Three CONTIGUOUS 16-byte dram based buffers named
+;           dsp_buff_1, dsp_buff_2, dsp_buff_3.
+;RETURNS:   nothing.
+;MODIFIES:  r25,r26, Z-ptr
+;CALLS:     none
+;CALLED BY: main application and diagnostics
+;********************************************************************
+clr_dsp_buffs:
+     ldi R25, 48               ; load total length of both buffer.
+     ldi R26, ' '              ; load blank/space into R26.
+     ldi ZH, high (dsp_buff_1) ; Load ZH and ZL as a pointer to 1st
+     ldi ZL, low (dsp_buff_1)  ; byte of buffer for line 1.
+   
+    ;set DDRAM address to 1st position of first line.
+store_bytes:
+     st  Z+, R26       ; store ' ' into 1st/next buffer byte and
+                       ; auto inc ptr to next location.
+     dec  R25          ; 
+     brne store_bytes  ; cont until r25=0, all bytes written.
+     ret
+
 ;***************************************************************************
 ;* 
 ;* "var_delay" - title
@@ -784,6 +1059,8 @@ var_delay:
 	push r18		
 	in r18, SREG		
 	push r18
+	push r16
+	push r17
 
 outer_loop:
 	ldi r17, 32
@@ -794,6 +1071,8 @@ inner_loop:
 	brne outer_loop
 
 	//----- RESTORE_SREG_AND_USED_REGISTERS -----//
+	pop r17
+	pop r16
 	pop r18				
 	out SREG, r18
 	pop r18
